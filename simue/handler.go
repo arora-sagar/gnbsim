@@ -270,6 +270,10 @@ func HandlePduSessReleaseCompleteEvent(ue *simuectx.SimUe,
 	msg := intfcMsg.(*common.UuMessage)
 	msg.Event = common.UL_INFO_TRANSFER_EVENT
 	SendToGnbUe(ue, msg)
+
+	if ue.Procedure == common.UE_REQUESTED_PDU_SESSION_RELEASE_PROCEDURE {
+		SendProcedureResult(ue)
+	}
 	return nil
 }
 
@@ -305,6 +309,13 @@ func HandleDataBearerReleaseRequestEvent(ue *simuectx.SimUe,
 	// routines in the RealUE will be terminated while processing PDU Session
 	// Release Complete which will also release the communication links
 	// (go channels) with the gNB
+
+	// A UE requested release is finished by HandlePduSessReleaseCompleteEvent
+	// instead, which runs once the Release Complete has actually been sent.
+	if ue.Procedure == common.UE_REQUESTED_PDU_SESSION_RELEASE_PROCEDURE {
+		return nil
+	}
+
 	// Current Procedure is complete. Move to next one
 	SendProcedureResult(ue)
 	return nil
