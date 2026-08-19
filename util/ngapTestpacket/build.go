@@ -213,22 +213,25 @@ func BuildInitialUEMessage(ranUeNgapID int64, nasPdu []byte, fiveGSTmsi string) 
 		ie.Value.FiveGSTMSI = new(ngapType.FiveGSTMSI)
 
 		fiveGSTMSI := ie.Value.FiveGSTMSI
-		amfSetID, err := hex.DecodeString(fiveGSTmsi[:4])
+
+		amfID, err := hex.DecodeString(fiveGSTmsi[:6])
 		if err != nil {
 			logger.UtilLog.Fatalf("DecodeString error in BuildInitialUEMessage: %+v", err)
 		}
+		setIDAndPointer := uint16(amfID[1])<<8 | uint16(amfID[2])
+
+		// Both are encoded left aligned within their octets, so the 10 bit Set ID
+		// keeps the 6 low bits clear and the 6 bit Pointer is shifted up by 2.
+		setID := setIDAndPointer & 0xffc0
 		fiveGSTMSI.AMFSetID.Value = aper.BitString{
-			Bytes:     amfSetID,
+			Bytes:     []byte{byte(setID >> 8), byte(setID)},
 			BitLength: 10,
 		}
-		amfPointer, err := hex.DecodeString(fiveGSTmsi[2:4])
-		if err != nil {
-			logger.UtilLog.Fatalf("DecodeString error in BuildInitialUEMessage: %+v", err)
-		}
 		fiveGSTMSI.AMFPointer.Value = aper.BitString{
-			Bytes:     amfPointer,
+			Bytes:     []byte{byte(setIDAndPointer&0x3f) << 2},
 			BitLength: 6,
 		}
+
 		tmsi, err := hex.DecodeString(fiveGSTmsi[6:])
 		if err != nil {
 			logger.UtilLog.Fatalf("DecodeString error in BuildInitialUEMessage: %+v", err)
